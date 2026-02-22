@@ -11,15 +11,25 @@ export const useOpenClaw = () => {
     const [connectionStatus, setConnectionStatus] = useState('DISCONNECTED');
 
     // Core states natively mapping to UI expectations
-    const [agentStatus, setAgentStatus] = useState([]);
+    // Fallback data strictly for UI display when servers are offline
+    const MOCK_AGENTS = [
+        { id: "ALPHA", name: "ALPHA", role: "Chief of Staff", state: "ACTIVE", activeTask: "Monitoring Comms", tokens: 145020, load: 35 },
+        { id: "ATLAS", name: "ATLAS", role: "Reconnaissance", state: "PROCESSING", activeTask: "Scanning sector 7G", tokens: 89000, load: 82 },
+        { id: "HERALD", name: "HERALD", role: "Communications", state: "IDLE", activeTask: null, tokens: 45200, load: 12 },
+        { id: "LEDGER", name: "LEDGER", role: "Financial Audits", state: "IDLE", activeTask: null, tokens: 920000, load: 5 },
+        { id: "FORGE", name: "FORGE", role: "Execution Engine", state: "PROCESSING", activeTask: "Compiling binary", tokens: 340500, load: 95 },
+        { id: "ORACLE", name: "ORACLE", role: "Personal OS", state: "ACTIVE", activeTask: "Awaiting Query", tokens: 21500, load: 22 }
+    ];
+
+    const [agentStatus, setAgentStatus] = useState(MOCK_AGENTS);
     const [intelFeed, setIntelFeed] = useState([]);
     const [systemMetrics, setSystemMetrics] = useState({
-        activeAgents: 0,
-        tasksInFlight: 0,
-        queueDepth: 0,
-        avgResponse: 0,
-        uptime: 0,
-        globalHealth: { ingestion: 'nominal', cognition: 'nominal', comms: 'nominal' }
+        activeAgents: 3,
+        tasksInFlight: 14,
+        queueDepth: 5,
+        avgResponse: 124,
+        uptime: 86400,
+        globalHealth: { ingestion: 'nominal', cognition: 'caution', comms: 'nominal' }
     });
 
     // We maintain raw OpenClaw presence state here to compute metrics and agent statuses
@@ -123,7 +133,28 @@ export const useOpenClaw = () => {
  * Since Kanban tasks are hitting VITE_MISSIONCONTROL_API_BASE per avantlancement.md constraints
  */
 export const useTasksApi = (pollingIntervalMs = 5000) => {
-    const [tasks, setTasks] = useState({ INBOX: [], ASSIGNED: [], IN_PROGRESS: [], REVIEW: [], DONE: [] });
+    // Offline Mock Fallback for Tasks Kanban
+    const MOCK_TASKS = {
+        INBOX: [
+            { id: 'T-101', title: 'Analyze recent server logs for anomalies', assignee: 'ATLAS', priority: 'nominal' },
+            { id: 'T-102', title: 'Draft weekly performance report', assignee: 'HERALD', priority: 'nominal' }
+        ],
+        ASSIGNED: [
+            { id: 'T-201', title: 'Audit crypto transactions Q3', assignee: 'LEDGER', priority: 'critical' }
+        ],
+        IN_PROGRESS: [
+            { id: 'T-301', title: 'Compile new inference engine v2', assignee: 'FORGE', priority: 'critical' },
+            { id: 'T-302', title: 'Monitor deep space arrays', assignee: 'ATLAS', priority: 'caution' }
+        ],
+        REVIEW: [
+            { id: 'T-401', title: 'Review operator daily summary', assignee: 'ORACLE', priority: 'nominal' }
+        ],
+        DONE: [
+            { id: 'T-501', title: 'Initialize command center UI', assignee: 'ALPHA', priority: 'nominal' }
+        ]
+    };
+
+    const [tasks, setTasks] = useState(MOCK_TASKS);
     const apiBase = import.meta.env.VITE_MISSIONCONTROL_API_BASE || 'http://localhost:4000/api';
 
     const fetchTasks = useCallback(async () => {
@@ -132,9 +163,12 @@ export const useTasksApi = (pollingIntervalMs = 5000) => {
             if (res.ok) {
                 const data = await res.json();
                 setTasks(adaptTaskEventsToKanban(data));
+            } else {
+                // If API fails with 404/500, keep fallback
+                console.warn("[Tasks API] Server responded with error, using offline mock tasks.");
             }
         } catch (e) {
-            console.warn("[Tasks API] Polling failed:", e.message);
+            console.warn("[Tasks API] Polling failed, using offline mock tasks.", e.message);
         }
     }, [apiBase]);
 
