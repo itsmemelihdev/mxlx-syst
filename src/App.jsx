@@ -5,10 +5,14 @@ import { Statusbar } from './components/Statusbar';
 import { IntelFeed } from './components/IntelFeed';
 import { OverviewPanel } from './components/OverviewPanel';
 import { CommsConsole } from './components/CommsConsole';
+import { AgentsPanel } from './components/AgentsPanel';
+import { TasksPanel } from './components/TasksPanel';
+import { IntelPanel } from './components/IntelPanel';
 import { useSimulation } from './hooks/useSimulation';
 
 function App() {
   const [activeTab, setActiveTab] = useState('overview');
+  const [activeAgentId, setActiveAgentId] = useState(null);
   const simulation = useSimulation();
 
   return (
@@ -31,14 +35,26 @@ function App() {
 
         <main className="flex-1 overflow-hidden relative">
           {activeTab === 'overview' && <OverviewPanel simulation={simulation} />}
-          {activeTab === 'comms' && <CommsConsole agents={simulation.agentStatus} />}
-
-          {/* Work in progress states for other tabs */}
-          {['agents', 'tasks'].includes(activeTab) && (
-            <div className="w-full h-full flex items-center justify-center font-mono text-gray-500 text-sm animate-pulse">
-              [ {activeTab.toUpperCase()} MODULE ALLOCATING MEMORY... ]
-            </div>
+          {activeTab === 'agents' && (
+            <AgentsPanel
+              agents={simulation.agentStatus}
+              systemMetrics={simulation.systemMetrics}
+              onSelectAgent={(id) => {
+                setActiveAgentId(id);
+                setActiveTab('comms');
+              }}
+            />
           )}
+          {activeTab === 'comms' && (
+            <CommsConsole
+              agents={simulation.agentStatus}
+              activeAgentId={activeAgentId || simulation.agentStatus[0]?.id}
+              setActiveAgentId={setActiveAgentId}
+            />
+          )}
+
+          {activeTab === 'tasks' && <TasksPanel tasks={simulation.tasks} agents={simulation.agentStatus} />}
+          {activeTab === 'intel' && <IntelPanel intelFeed={simulation.intelFeed} heatmap={simulation.heatmap} agents={simulation.agentStatus} />}
         </main>
 
         {activeTab !== 'comms' && (

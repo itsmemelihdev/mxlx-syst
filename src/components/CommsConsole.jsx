@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 
-export const CommsConsole = ({ agents }) => {
-    const [activeAgentId, setActiveAgentId] = useState(agents[0]?.id || null);
+export const CommsConsole = ({ agents, activeAgentId, setActiveAgentId }) => {
     const [history, setHistory] = useState([
         { role: 'SYSTEM', content: 'SECURE CHANNEL ESTABLISHED.' },
         { role: 'OPERATOR', content: 'Status report.' }
@@ -67,8 +66,8 @@ export const CommsConsole = ({ agents }) => {
                                 {msg.role}
                             </div>
                             <div className={`px-4 py-2 rounded max-w-[80%] ${msg.role === 'OPERATOR'
-                                    ? 'bg-surface border border-white/10 text-[#E8E4DD]'
-                                    : 'bg-accent/5 border left-border border-l-4 border-accent text-gray-300'
+                                ? 'bg-surface border border-white/10 text-[#E8E4DD]'
+                                : 'bg-accent/5 border left-border border-l-4 border-accent text-gray-300'
                                 }`}>
                                 {msg.content}
                             </div>
@@ -145,8 +144,8 @@ export const CommsConsole = ({ agents }) => {
                                 key={a.id}
                                 onClick={() => setActiveAgentId(a.id)}
                                 className={`px-3 py-1.5 font-mono text-[9px] rounded border transition-all ${activeAgentId === a.id
-                                        ? 'bg-accent/20 border-accent text-accent shadow-[0_0_10px_rgba(245,158,11,0.2)]'
-                                        : 'bg-black/30 border-white/10 hover:border-white/30 text-gray-500'
+                                    ? 'bg-accent/20 border-accent text-accent shadow-[0_0_10px_rgba(245,158,11,0.2)]'
+                                    : 'bg-black/30 border-white/10 hover:border-white/30 text-gray-500'
                                     }`}
                             >
                                 {a.name}
