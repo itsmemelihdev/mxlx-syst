@@ -8,12 +8,26 @@ import { CommsConsole } from './components/CommsConsole';
 import { AgentsPanel } from './components/AgentsPanel';
 import { TasksPanel } from './components/TasksPanel';
 import { IntelPanel } from './components/IntelPanel';
-import { useSimulation } from './hooks/useSimulation';
+import { useOpenClaw, useTasksApi } from './hooks/useOpenClaw';
 
 function App() {
   const [activeTab, setActiveTab] = useState('overview');
   const [activeAgentId, setActiveAgentId] = useState(null);
-  const simulation = useSimulation();
+
+  // Real OpenClaw Gateway Integration
+  const openClawState = useOpenClaw();
+  const tasksApi = useTasksApi();
+
+  // Unified object mimicking the old simulation shape for backward compatibility with UI props
+  const simulation = {
+    missionTime: new Date().toISOString().substr(11, 8), // Local clock fallback since Gateway doesn't broadcast time ticks
+    agentStatus: openClawState.agentStatus,
+    intelFeed: openClawState.intelFeed,
+    systemMetrics: openClawState.systemMetrics,
+    tasks: tasksApi.tasks,
+    heatmap: [], // OpenClaw doesn't provide heatmap natively
+    connectionStatus: openClawState.connectionStatus
+  };
 
   return (
     <div className="w-full h-full flex flex-col bg-void text-primary selection:bg-accent selection:text-black overflow-hidden relative font-sans">
@@ -24,6 +38,7 @@ function App() {
       <Topbar
         missionTime={simulation.missionTime}
         globalHealth={simulation.systemMetrics.globalHealth}
+        connectionStatus={simulation.connectionStatus}
       />
 
       <div className="flex-1 flex overflow-hidden">

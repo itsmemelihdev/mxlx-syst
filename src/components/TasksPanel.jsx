@@ -181,7 +181,7 @@ export const TasksPanel = ({ tasks, agents }) => {
         });
     };
 
-    const handleDragEnd = (event) => {
+    const handleDragEnd = async (event) => {
         const { active, over } = event;
         setActiveDragTask(null);
         if (!over) return;
@@ -197,12 +197,44 @@ export const TasksPanel = ({ tasks, agents }) => {
         const overIndex = localTasks[overContainer].findIndex(t => t.id === over.id);
 
         if (activeIndex !== overIndex) {
+            // 1. Snapshot for rollback
+            const previousTasks = { ...localTasks };
+
+            // 2. Optimistic UI update
             setLocalTasks(prev => ({
                 ...prev,
                 [overContainer]: arrayMove(prev[overContainer], activeIndex, overIndex)
             }));
+
+            // 3. Dispatch PATCH to backend (per avantlancement.md)
+            try {
+                const apiBase = import.meta.env.VITE_MISSIONCONTROL_API_BASE || 'http://localhost:4000/api';
+                const res = await fetch(`${apiBase}/tasks/${active.id}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ column: overContainer, order: overIndex })
+                });
+
+                if (!res.ok) {
+                    throw new Error(`Failed to save drag end: ${res.statusText}`);
+                }
+            } catch (err) {
+                console.error("[TasksPanel] Kanban Drag sync failed, rolling back.", err);
+                // Rollback optimistic update
+                setLocalTasks(previousTasks);
+            }
         }
     };
+
+    // Sync only when 'tasks' prop structurally updates and differs from 'localTasks' length.
+    // Important: avoid jittering during drags.
+    useEffect(() => {
+        const inLen = Object.values(tasks).flat().length;
+        const locLen = Object.values(localTasks).flat().length;
+        if (inLen !== locLen) {
+            setLocalTasks(tasks);
+        }
+    }, [tasks]);
 
     // Timeline computation
     const allTasksChronological = Object.keys(localTasks).flatMap(col =>

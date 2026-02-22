@@ -13,8 +13,11 @@ export const CommsConsole = ({ agents, activeAgentId, setActiveAgentId }) => {
     // Instead of array, Map of agentId -> array of messages
     const [chatHistories, setChatHistories] = useState(new Map());
     const [inputVal, setInputVal] = useState('');
+    // Lock to prevent sending while streaming
+    const [isStreaming, setIsStreaming] = useState(false);
 
     const bottomRef = useRef(null);
+    const { client } = useOpenClaw();
 
     useEffect(() => {
         if (activeAgentId && !chatHistories.has(activeAgentId)) {
@@ -38,13 +41,78 @@ export const CommsConsole = ({ agents, activeAgentId, setActiveAgentId }) => {
 
     useEffect(() => {
         bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [currentMessages]);
+    }, [currentMessages, chatHistories]);
 
     const activeAgent = agents.find(a => a.id === activeAgentId);
 
+    // ------------------------------------------------------------------------
+    // OpenClaw WebSocket Chat Stream Listener (avantlancement.md constraints)
+    // ------------------------------------------------------------------------
+    useEffect(() => {
+        if (!client) return;
+
+        const unsubscribe = client.on('chat', (payload) => {
+            const { sessionKey, state, message, errorMessage } = payload;
+
+            setChatHistories(prev => {
+                const mapCopy = new Map(prev);
+                const msgs = mapCopy.get(sessionKey) || [];
+                // We'll mutate the copy to avoid heavy re-allocations during fast streaming
+                const lastMsg = msgs[msgs.length - 1];
+
+                if (state === 'delta') {
+                    // Accumulate streaming text
+                    if (lastMsg && lastMsg.role === sessionKey && lastMsg.isStreaming) {
+                        lastMsg.content += (message?.content || '');
+                    } else {
+                        msgs.push({
+                            id: Date.now() + Math.random(),
+                            role: sessionKey,
+                            content: message?.content || '',
+                            isStreaming: true,
+                            agent: agents.find(a => a.id === sessionKey)
+                        });
+                    }
+                }
+                else if (state === 'final') {
+                    // Commit final message
+                    if (lastMsg && lastMsg.role === sessionKey && lastMsg.isStreaming) {
+                        lastMsg.isStreaming = false;
+                        if (message?.content && typeof message.content === 'string') {
+                            lastMsg.content = message.content;
+                        }
+                    } else if (message?.content) {
+                        msgs.push({
+                            id: Date.now() + Math.random(),
+                            role: sessionKey,
+                            content: message.content,
+                            isStreaming: false,
+                            agent: agents.find(a => a.id === sessionKey)
+                        });
+                    }
+                    if (sessionKey === activeAgentId) setIsStreaming(false);
+                }
+                else if (state === 'aborted' || state === 'error') {
+                    msgs.push({
+                        id: Date.now() + Math.random(),
+                        role: 'SYSTEM_ERROR',
+                        content: state === 'error' ? `[ERR] ${errorMessage || 'Unknown stream error'}` : '[STREAM ABORTED BY OPERATOR]',
+                        isError: true
+                    });
+                    if (sessionKey === activeAgentId) setIsStreaming(false);
+                }
+
+                mapCopy.set(sessionKey, [...msgs]);
+                return mapCopy;
+            });
+        });
+
+        return () => unsubscribe();
+    }, [client, activeAgentId, agents]);
+
     const handleSubmit = (e) => {
         e.preventDefault();
-        if (!inputVal.trim() || !activeAgentId) return;
+        if (!inputVal.trim() || !activeAgentId || isStreaming) return;
 
         const operatorMsg = { role: 'OPERATOR', content: inputVal };
 
@@ -53,21 +121,15 @@ export const CommsConsole = ({ agents, activeAgentId, setActiveAgentId }) => {
             return new Map(prev).set(activeAgentId, [...msgs, operatorMsg]);
         });
 
-        setInputVal('');
+        // Exact OpenClaw `chat.send` WS integration
+        try {
+            client.sendChatMessage(activeAgentId, inputVal);
+            setIsStreaming(true);
+        } catch (err) {
+            console.error("[CommsConsole] Failed to send over WS", err);
+        }
 
-        // Fake response
-        setTimeout(() => {
-            setChatHistories(prev => {
-                // We need to append to the existing history for activeAgentId
-                const currentMsgs = prev.get(activeAgentId) || [];
-                const responseMsg = {
-                    role: activeAgentId,
-                    content: `Executing directive. Memory blocks allocated for task parsing.`,
-                    agent: activeAgent
-                };
-                return new Map(prev).set(activeAgentId, [...currentMsgs, responseMsg]);
-            });
-        }, 1200);
+        setInputVal('');
     };
 
     return (
@@ -88,32 +150,36 @@ export const CommsConsole = ({ agents, activeAgentId, setActiveAgentId }) => {
                 <div className="flex-1 overflow-y-auto mb-4 space-y-4 pr-2 font-mono text-[13px] leading-relaxed">
                     {currentMessages.map((msg, idx) => (
                         <div key={idx} className={`flex flex-col animate-data-enter ${msg.role === 'OPERATOR' ? 'items-end' : 'items-start'}`}>
-                            <div className={`text-[10px] mb-1 font-bold tracking-widest ${msg.role === 'OPERATOR' ? 'text-gray-500' : 'text-accent'}`}>
+                            <div className={`text-[10px] mb-1 font-bold tracking-widest ${msg.role === 'OPERATOR' ? 'text-gray-500' : msg.isError ? 'text-critical' : 'text-accent'}`}>
                                 {msg.role}
                             </div>
-                            <div className={`px-4 py-2 rounded max-w-[80%] ${msg.role === 'OPERATOR'
+                            <div className={`px-4 py-2 rounded max-w-[80%] whitespace-pre-wrap ${msg.role === 'OPERATOR'
                                 ? 'bg-surface border border-white/10 text-[#E8E4DD]'
-                                : 'bg-accent/5 border left-border border-l-4 border-accent text-gray-300'
+                                : msg.isError
+                                    ? 'bg-critical/10 border-l-4 border-critical text-critical font-bold mt-2'
+                                    : 'bg-accent/5 border left-border border-l-4 border-accent text-gray-300'
                                 }`}>
                                 {msg.content}
+                                {msg.isStreaming && <span className="inline-block w-1.5 h-3 ml-1 bg-accent animate-pulse align-middle"></span>}
                             </div>
                         </div>
                     ))}
                     <div ref={bottomRef} className="h-1" />
                 </div>
 
-                <form onSubmit={handleSubmit} className="shrink-0 flex items-center bg-black/50 border border-accent/30 rounded focus-within:border-accent transition-colors p-1 pl-3 shadow-[inset_0_0_10px_rgba(0,0,0,0.5)]">
+                <form onSubmit={handleSubmit} className={`shrink-0 flex items-center bg-black/50 border rounded transition-colors p-1 pl-3 shadow-[inset_0_0_10px_rgba(0,0,0,0.5)] ${isStreaming ? 'border-white/10 opacity-50 cursor-not-allowed' : 'border-accent/30 focus-within:border-accent'}`}>
                     <span className="text-accent font-mono font-bold mr-2">&gt;</span>
                     <input
                         type="text"
                         value={inputVal}
                         onChange={(e) => setInputVal(e.target.value)}
-                        className="flex-1 bg-transparent border-none text-primary font-mono text-[13px] focus:outline-none placeholder-gray-600 h-10"
-                        placeholder="Transmit directive..."
+                        disabled={isStreaming}
+                        className="flex-1 bg-transparent border-none text-primary font-mono text-[13px] focus:outline-none placeholder-gray-600 h-10 disabled:cursor-not-allowed"
+                        placeholder={isStreaming ? "Streaming response..." : "Transmit directive..."}
                         autoFocus
                     />
-                    <button type="submit" className="bg-white/5 hover:bg-accent hover:text-black hover:border-accent text-accent font-heading px-6 py-2 rounded text-xs tracking-widest uppercase transition-all border border-accent/30 h-10 font-bold ml-2">
-                        Transmit
+                    <button type="submit" disabled={isStreaming} className="bg-white/5 hover:bg-accent hover:text-black hover:border-accent text-accent disabled:text-gray-500 disabled:border-gray-600 disabled:hover:bg-transparent font-heading px-6 py-2 rounded text-xs tracking-widest uppercase transition-all border border-accent/30 h-10 font-bold ml-2">
+                        {isStreaming ? 'STREAMING' : 'TRANSMIT'}
                     </button>
                 </form>
             </div>

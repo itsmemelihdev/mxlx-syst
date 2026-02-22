@@ -12,7 +12,7 @@ const formatUptime = (seconds) => {
     return `T+${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
 };
 
-export const Topbar = ({ missionTime, globalHealth }) => {
+export const Topbar = ({ missionTime, globalHealth, connectionStatus }) => {
     const [time, setTime] = useState(formatTime());
 
     useEffect(() => {
@@ -44,16 +44,29 @@ export const Topbar = ({ missionTime, globalHealth }) => {
                     {['ingestion', 'cognition', 'comms'].map(sys => (
                         <div key={sys} className="flex items-center space-x-1.5" title={`System: ${sys}`}>
                             <div className={`w-2 h-2 rounded-full ${globalHealth[sys] === 'nominal' ? 'bg-nominal animate-pulse-slow' :
-                                    globalHealth[sys] === 'caution' ? 'bg-caution animate-pulse-fast' : 'bg-critical animate-strobe'
+                                globalHealth[sys] === 'caution' ? 'bg-caution animate-pulse-fast' : 'bg-critical animate-strobe'
                                 }`} />
                             <span className="font-heading text-[9px] uppercase tracking-wider text-gray-400">{sys.substring(0, 3)}</span>
                         </div>
                     ))}
                 </div>
 
-                <div className="flex items-center space-x-2 border border-accent/20 bg-accent/5 px-3 py-1 rounded">
-                    <div className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse-fast"></div>
-                    <span className="font-heading text-[10px] text-accent tracking-widest uppercase mt-[1px]">Secure Channel Active</span>
+                <div className={`flex items-center space-x-2 border px-3 py-1 rounded transition-colors ${connectionStatus === 'CONNECTED' ? 'bg-nominal/10 border-nominal/30' :
+                        connectionStatus === 'RECONNECTING' ? 'bg-caution/10 border-caution/30' :
+                            'bg-critical/10 border-critical/30'
+                    }`}>
+                    <div className={`w-1.5 h-1.5 rounded-full ${connectionStatus === 'CONNECTED' ? 'bg-nominal animate-pulse' :
+                            connectionStatus === 'RECONNECTING' ? 'bg-caution animate-ping' :
+                                'bg-critical'
+                        }`}></div>
+                    <span className={`font-heading text-[10px] tracking-widest uppercase mt-[1px] ${connectionStatus === 'CONNECTED' ? 'text-nominal' :
+                            connectionStatus === 'RECONNECTING' ? 'text-caution' :
+                                'text-critical'
+                        }`}>
+                        {connectionStatus === 'CONNECTED' ? 'UPLINK ESTABLISHED' :
+                            connectionStatus === 'RECONNECTING' ? 'REESTABLISHING...' :
+                                'NO SIGNAL'}
+                    </span>
                 </div>
             </div>
         </div>
