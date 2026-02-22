@@ -113,10 +113,10 @@ export class OpenClawClient {
             minProtocol: 1,
             maxProtocol: 3,
             client: {
-                id: "openclaw-control-ui",
+                id: "cli",
                 version: "1.0.0",
                 platform: "web",
-                mode: "ui"
+                mode: "cli"
             },
             auth: {
                 token: this.token
