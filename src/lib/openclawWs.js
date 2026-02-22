@@ -61,6 +61,7 @@ export class OpenClawClient {
 
     _handleMessage(event) {
         try {
+            console.log('[OpenClaw] RAW WS frame:', event.data);
             const frame = JSON.parse(event.data);
 
             // 1. Handshake Phase
@@ -69,13 +70,26 @@ export class OpenClawClient {
                 return;
             }
 
-            if (!this.hasHandshakeCompleted && frame.type === 'hello-ok') {
+            // Extract payload to detect hello-ok inside a 'res' frame
+            const isHelloOkEvent = frame.type === 'hello-ok';
+            const isHelloOkRes = frame.type === 'res' && frame.payload && frame.payload.type === 'hello-ok';
+
+            if (!this.hasHandshakeCompleted && (isHelloOkEvent || isHelloOkRes)) {
                 this.hasHandshakeCompleted = true;
                 this.isConnected = true;
                 this.reconnectAttempts = 0;
                 this._setStatus('CONNECTED');
-                console.log('[OpenClaw] Handshake OK. Protocol Active.');
+                console.log('[OpenClaw] Handshake OK. Protocol Active.', frame);
                 return;
+            }
+
+            if (frame.type === 'res' && !frame.ok) {
+                console.error('[OpenClaw] Gateway returned error:', frame.error);
+                if (frame.error?.code === 'UNAUTHORIZED' && !this.hasHandshakeCompleted) {
+                    this._setStatus('DISCONNECTED');
+                    this.ws.close(1008, "Auth failed");
+                    return;
+                }
             }
 
             // 2. Gateway Event Dispatcher (post-handshake)
@@ -134,12 +148,13 @@ export class OpenClawClient {
     }
 
     _handleError(error) {
-        console.error('[OpenClaw] WS Error:', error);
+        console.error('[OpenClaw] WS Error emitted:', error);
         // onclose will handle reconnect
     }
 
     _sendFrame(frame) {
         if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            console.log('[OpenClaw] Sending WS frame:', frame);
             this.ws.send(JSON.stringify(frame));
         } else {
             console.warn('[OpenClaw] Cannot send frame over closed socket', frame);
