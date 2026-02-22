@@ -26,6 +26,9 @@ function App() {
     systemMetrics: openClawState.systemMetrics,
     tasks: tasksApi.tasks,
     heatmap: [], // OpenClaw doesn't provide heatmap natively
+    directives: [], // Fallback
+    cognitionData: [], // Fallback
+    timelineEvents: openClawState.intelFeed, // Map intelFeed to timelineEvents for now to avoid crash
     connectionStatus: openClawState.connectionStatus
   };
 
