@@ -1,46 +1,72 @@
 import React, { useState, useEffect, useRef } from 'react';
 
+const WELCOME_MESSAGES = {
+    ALPHA: "NEXUS LINK ESTABLISHED. Chief of Staff ALPHA online. Awaiting directives.",
+    ATLAS: "INTEL UPLINK ACTIVE. ATLAS reconnaissance array online. Query ready.",
+    HERALD: "COMMS CHANNEL OPEN. HERALD standing by. Draft, send, or monitor.",
+    LEDGER: "LEDGER CONNECTED. Financial telemetry nominal. Awaiting audit request.",
+    FORGE: "FORGE ONLINE. Execution engine primed. Assign target objective.",
+    ORACLE: "ORACLE SYNC COMPLETE. Personal OS active. Daily brief queued.",
+};
+
 export const CommsConsole = ({ agents, activeAgentId, setActiveAgentId }) => {
-    const [history, setHistory] = useState([
-        { role: 'SYSTEM', content: 'SECURE CHANNEL ESTABLISHED.' },
-        { role: 'OPERATOR', content: 'Status report.' }
-    ]);
+    // Instead of array, Map of agentId -> array of messages
+    const [chatHistories, setChatHistories] = useState(new Map());
     const [inputVal, setInputVal] = useState('');
 
     const bottomRef = useRef(null);
 
     useEffect(() => {
-        if (activeAgentId && history.length === 2) {
-            setTimeout(() => {
-                setHistory(prev => [...prev, {
-                    role: activeAgentId,
-                    content: 'Awaiting operator input. Core functions nominal.',
-                    agent: agents.find(a => a.id === activeAgentId)
-                }]);
-            }, 600);
+        if (activeAgentId && !chatHistories.has(activeAgentId)) {
+            const welcomeMsg = {
+                id: Date.now(),
+                role: activeAgentId,
+                content: WELCOME_MESSAGES[activeAgentId] || "SECURE CHANNEL ESTABLISHED. Awaiting operator input.",
+                agent: agents.find(a => a.id === activeAgentId)
+            };
+            setChatHistories(prev => {
+                const newMap = new Map(prev);
+                if (!newMap.has(activeAgentId)) {
+                    newMap.set(activeAgentId, [welcomeMsg]);
+                }
+                return newMap;
+            });
         }
-    }, [activeAgentId, agents, history.length]);
+    }, [activeAgentId, chatHistories, agents]);
+
+    const currentMessages = chatHistories.get(activeAgentId) ?? [];
 
     useEffect(() => {
         bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [history]);
+    }, [currentMessages]);
 
     const activeAgent = agents.find(a => a.id === activeAgentId);
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        if (!inputVal.trim()) return;
+        if (!inputVal.trim() || !activeAgentId) return;
 
-        setHistory(prev => [...prev, { role: 'OPERATOR', content: inputVal }]);
+        const operatorMsg = { role: 'OPERATOR', content: inputVal };
+
+        setChatHistories(prev => {
+            const msgs = prev.get(activeAgentId) || [];
+            return new Map(prev).set(activeAgentId, [...msgs, operatorMsg]);
+        });
+
         setInputVal('');
 
         // Fake response
         setTimeout(() => {
-            setHistory(prev => [...prev, {
-                role: activeAgent?.id || 'SYSTEM',
-                content: `Executing directive. Memory blocks allocated for task parsing.`,
-                agent: activeAgent
-            }]);
+            setChatHistories(prev => {
+                // We need to append to the existing history for activeAgentId
+                const currentMsgs = prev.get(activeAgentId) || [];
+                const responseMsg = {
+                    role: activeAgentId,
+                    content: `Executing directive. Memory blocks allocated for task parsing.`,
+                    agent: activeAgent
+                };
+                return new Map(prev).set(activeAgentId, [...currentMsgs, responseMsg]);
+            });
         }, 1200);
     };
 
@@ -60,7 +86,7 @@ export const CommsConsole = ({ agents, activeAgentId, setActiveAgentId }) => {
                 </div>
 
                 <div className="flex-1 overflow-y-auto mb-4 space-y-4 pr-2 font-mono text-[13px] leading-relaxed">
-                    {history.map((msg, idx) => (
+                    {currentMessages.map((msg, idx) => (
                         <div key={idx} className={`flex flex-col animate-data-enter ${msg.role === 'OPERATOR' ? 'items-end' : 'items-start'}`}>
                             <div className={`text-[10px] mb-1 font-bold tracking-widest ${msg.role === 'OPERATOR' ? 'text-gray-500' : 'text-accent'}`}>
                                 {msg.role}
