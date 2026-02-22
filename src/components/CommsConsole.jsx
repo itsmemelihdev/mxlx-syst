@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useOpenClaw } from '../hooks/useOpenClaw';
 
 const WELCOME_MESSAGES = {
     ALPHA: "NEXUS LINK ESTABLISHED. Chief of Staff ALPHA online. Awaiting directives.",
@@ -18,6 +19,63 @@ export const CommsConsole = ({ agents, activeAgentId, setActiveAgentId }) => {
 
     const bottomRef = useRef(null);
     const { client } = useOpenClaw();
+
+    if (!agents || agents.length === 0) {
+        return (
+            <div className="w-full h-full flex items-center justify-center bg-void p-6 relative overflow-hidden">
+                {/* Background Scanline */}
+                <div className="absolute inset-0 pointer-events-none z-0">
+                    <div className="w-full h-[15%] bg-gradient-to-b from-transparent via-accent/5 to-transparent animate-scanline"></div>
+                </div>
+
+                <div className="tactical-panel relative z-10 flex flex-col items-center justify-center text-center max-w-md p-10 border-dashed border-2 border-accent/20 bg-black/60 shadow-[0_0_50px_rgba(245,158,11,0.05)]">
+
+                    {/* Radar Scanning Widget */}
+                    <div className="w-32 h-32 rounded-full border border-accent/30 flex items-center justify-center mb-8 relative overflow-hidden bg-black shadow-[inset_0_0_20px_rgba(245,158,11,0.2)]">
+                        {/* Crosshairs */}
+                        <div className="absolute inset-x-0 top-1/2 h-px bg-accent/20"></div>
+                        <div className="absolute inset-y-0 left-1/2 w-px bg-accent/20"></div>
+                        {/* Inner circles */}
+                        <div className="absolute w-20 h-20 rounded-full border border-accent/10"></div>
+                        <div className="absolute w-10 h-10 rounded-full border border-accent/10"></div>
+
+                        {/* Sweeping Cone */}
+                        <div
+                            className="w-[150%] h-[150%] absolute origin-center animate-radar-spin"
+                            style={{ background: 'conic-gradient(from 0deg, transparent 0deg, transparent 270deg, rgba(245, 158, 11, 0.4) 360deg)' }}
+                        ></div>
+
+                        {/* Center Target with Ping */}
+                        <div className="absolute w-6 h-6 rounded-full border border-accent/60 animate-radar-ping z-0"></div>
+                        <div className="w-2 h-2 bg-accent rounded-full relative z-10 animate-pulse"></div>
+                    </div>
+
+                    <h2 className="font-heading text-xl text-accent mb-3 tracking-[0.2em] uppercase animate-glitch-hover cursor-crosshair select-none">
+                        Scanning Frequencies
+                    </h2>
+                    <p className="text-[10px] font-mono text-gray-400 leading-relaxed uppercase tracking-widest max-w-[80%] mb-4">
+                        No agent footprints detected. Monitoring channels for OpenClaw Gateway telemetry packets...
+                    </p>
+
+                    {/* Audio Spectrum Waveform */}
+                    <div className="flex items-end justify-center space-x-[2px] h-6 mb-2">
+                        {[...Array(16)].map((_, i) => (
+                            <div
+                                key={i}
+                                className="w-1 bg-accent/40 animate-waveform"
+                                style={{ animationDelay: `${i * 0.1}s`, height: `${Math.random() * 80 + 20}%` }}
+                            ></div>
+                        ))}
+                    </div>
+
+                    <div className="mt-6 flex items-center text-[10px] font-mono text-accent/50 border border-accent/20 px-4 py-2 bg-accent/5 rounded">
+                        <div className="w-1.5 h-1.5 bg-accent/50 rounded-full mr-3 animate-strobe"></div>
+                        AWAITING UPLINK
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     useEffect(() => {
         if (activeAgentId && !chatHistories.has(activeAgentId)) {
@@ -131,6 +189,8 @@ export const CommsConsole = ({ agents, activeAgentId, setActiveAgentId }) => {
 
         setInputVal('');
     };
+
+
 
     return (
         <div className="w-full h-full flex bg-void p-6 gap-6 overflow-hidden">

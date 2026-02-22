@@ -5,12 +5,15 @@
 @layer base {
   :root {
     --accent: #F59E0B;
-    --border: rgba(255,255,255,0.06);
+    --border: rgba(255, 255, 255, 0.06);
   }
-  
+
   body::before {
     content: '';
-    position: fixed; inset: 0; z-index: 9999; pointer-events: none;
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    pointer-events: none;
     background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
     opacity: 0.04;
     mix-blend-mode: overlay;
@@ -18,10 +21,13 @@
 
   body::after {
     content: '';
-    position: fixed; inset: 0; z-index: 1; pointer-events: none;
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
     background-image:
-      linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+      linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
     background-size: 40px 40px;
   }
 
@@ -29,18 +35,25 @@
     width: 2px;
     height: 2px;
   }
+
   ::-webkit-scrollbar-track {
     background: transparent;
   }
+
   ::-webkit-scrollbar-thumb {
     background: transparent;
   }
+
   :hover::-webkit-scrollbar-thumb {
     background: var(--accent);
   }
 
   /* Interactive cursor override for all clickable things */
-  a, button, [role="button"], input, .interactive {
+  a,
+  button,
+  [role="button"],
+  input,
+  .interactive {
     cursor: crosshair !important;
   }
 }
@@ -49,11 +62,12 @@
   .tactical-panel {
     @apply bg-surface rounded-lg border border-white/5 p-4 z-10 relative transition-all duration-200;
   }
+
   .tactical-panel:hover {
     border-color: rgba(245, 158, 11, 0.3);
     box-shadow: 0 0 20px rgba(245, 158, 11, 0.08);
   }
-  
+
   .glass-panel {
     @apply bg-glass rounded-lg border border-white/5 z-20 shadow-2xl backdrop-blur-md;
   }
@@ -65,7 +79,7 @@
   .text-telemetry {
     @apply font-mono text-[#9CA3AF];
   }
-  
+
   .text-intel {
     @apply font-serif italic text-white;
   }
@@ -79,36 +93,299 @@
   .animate-pulse-slow {
     animation: pulseSlow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
+
   .animate-pulse-fast {
     animation: pulseFast 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
+
   .animate-strobe {
     animation: strobeFast 0.4s steps(2, end) infinite;
   }
+
   .animate-data-enter {
     animation: dataEnter 0.2s ease-out forwards;
   }
 
   @keyframes pulseSlow {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
+
+    0%,
+    100% {
+      opacity: 1;
+    }
+
+    50% {
+      opacity: 0.5;
+    }
   }
+
   @keyframes pulseFast {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.3; }
+
+    0%,
+    100% {
+      opacity: 1;
+    }
+
+    50% {
+      opacity: 0.3;
+    }
   }
+
   @keyframes strobeFast {
-    0%, 100% { background-color: transparent; color: inherit; }
-    50% { background-color: #E63B2E; color: white; }
+
+    0%,
+    100% {
+      background-color: transparent;
+      color: inherit;
+    }
+
+    50% {
+      background-color: #E63B2E;
+      color: white;
+    }
   }
+
   @keyframes dataEnter {
     from {
       opacity: 0;
       transform: translateY(2px);
     }
+
     to {
       opacity: 1;
       transform: translateY(0);
     }
+  }
+
+  @keyframes radarSpin {
+    from {
+      transform: rotate(0deg);
+    }
+
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  @keyframes scanline {
+    0% {
+      transform: translateY(-100%);
+      opacity: 0;
+    }
+
+    10% {
+      opacity: 1;
+    }
+
+    90% {
+      opacity: 1;
+    }
+
+    100% {
+      transform: translateY(800%);
+      opacity: 0;
+    }
+  }
+
+  @keyframes radarPing {
+    0% {
+      transform: scale(0.5);
+      opacity: 0.8;
+    }
+
+    100% {
+      transform: scale(3);
+      opacity: 0;
+    }
+  }
+
+  @keyframes glitch {
+    0% {
+      transform: translate(0)
+    }
+
+    20% {
+      transform: translate(-2px, 1px)
+    }
+
+    40% {
+      transform: translate(-1px, -1px)
+    }
+
+    60% {
+      transform: translate(2px, 1px)
+    }
+
+    80% {
+      transform: translate(1px, -1px)
+    }
+
+    100% {
+      transform: translate(0)
+    }
+  }
+
+  @keyframes waveform {
+    0% {
+      transform: scaleY(0.1);
+    }
+
+    50% {
+      transform: scaleY(1);
+    }
+
+    100% {
+      transform: scaleY(0.1);
+    }
+  }
+
+  @keyframes dataStream {
+    from {
+      transform: translateY(-100%);
+    }
+
+    to {
+      transform: translateY(100%);
+    }
+  }
+
+  .animate-radar-spin {
+    animation: radarSpin 4s linear infinite;
+  }
+
+  .animate-scanline {
+    animation: scanline 3s linear infinite;
+  }
+
+  .animate-radar-ping {
+    animation: radarPing 2.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+  }
+
+  .animate-glitch {
+    animation: glitch 0.3s cubic-bezier(.25, .46, .45, .94) both infinite;
+  }
+
+  .animate-glitch-hover:hover {
+    animation: glitch 0.2s cubic-bezier(.25, .46, .45, .94) both infinite;
+  }
+
+  .animate-waveform {
+    animation: waveform 1s ease-in-out infinite;
+  }
+
+  .animate-data-stream {
+    animation: dataStream 50s linear infinite;
+  }
+
+  @keyframes blinkCursor {
+
+    0%,
+    100% {
+      opacity: 1;
+    }
+
+    50% {
+      opacity: 0;
+    }
+  }
+
+  @keyframes sonarPulse {
+    0% {
+      transform: scale(0.5);
+      opacity: 0;
+      border-width: 2px;
+    }
+
+    50% {
+      opacity: 0.5;
+      border-width: 1px;
+    }
+
+    100% {
+      transform: scale(2.5);
+      opacity: 0;
+      border-width: 0px;
+    }
+  }
+
+  @keyframes blockShift {
+
+    0%,
+    100% {
+      opacity: 0.1;
+      transform: translateY(0);
+    }
+
+    50% {
+      opacity: 0.6;
+      transform: translateY(-4px);
+    }
+  }
+
+  @keyframes timelineScroll {
+    from {
+      background-position: 0 0;
+    }
+
+    to {
+      background-position: -40px 0;
+    }
+  }
+
+  @keyframes decryptScan {
+    0% {
+      transform: translateX(-100%);
+      opacity: 0;
+    }
+
+    10% {
+      opacity: 1;
+    }
+
+    90% {
+      opacity: 1;
+    }
+
+    100% {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+  }
+
+  @keyframes breatheGlow {
+
+    0%,
+    100% {
+      opacity: 0.3;
+      filter: drop-shadow(0 0 5px rgba(245, 158, 11, 0.2));
+    }
+
+    50% {
+      opacity: 0.8;
+      filter: drop-shadow(0 0 15px rgba(245, 158, 11, 0.6));
+    }
+  }
+
+  .animate-blink-cursor {
+    animation: blinkCursor 1s step-end infinite;
+  }
+
+  .animate-sonar-pulse {
+    animation: sonarPulse 3s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
+  }
+
+  .animate-block-shift {
+    animation: blockShift 2s ease-in-out infinite;
+  }
+
+  .animate-timeline-scroll {
+    animation: timelineScroll 3s linear infinite;
+  }
+
+  .animate-decrypt-scan {
+    animation: decryptScan 2s ease-in-out infinite;
+  }
+
+  .animate-breathe-glow {
+    animation: breatheGlow 4s ease-in-out infinite;
   }
 }

@@ -285,6 +285,56 @@ export const TasksPanel = ({ tasks, agents }) => {
             {/* Main View Area */}
             <div className="flex-1 overflow-hidden relative">
 
+                {/* Empty State Overlay */}
+                {totalCount === 0 && (
+                    <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm rounded-lg border border-white/5 overflow-hidden">
+                        {/* Background Scanline */}
+                        <div className="absolute inset-0 pointer-events-none z-0">
+                            <div className="w-full h-[15%] bg-gradient-to-b from-transparent via-white/10 to-transparent animate-scanline"></div>
+                        </div>
+
+                        {/* Data Stream Lines */}
+                        <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden opacity-30">
+                            {[...Array(5)].map((_, i) => (
+                                <div
+                                    key={i}
+                                    className="absolute w-px bg-gradient-to-b from-transparent via-white/40 to-transparent animate-data-stream"
+                                    style={{
+                                        left: `${15 + i * 18}%`,
+                                        height: '100%',
+                                        animationDelay: `${i * 0.7}s`,
+                                        animationDuration: `${3 + (i % 3)}s`
+                                    }}
+                                ></div>
+                            ))}
+                        </div>
+
+                        <div className="tactical-panel relative z-10 flex flex-col items-center justify-center p-12 text-center max-w-lg border-white/10 shadow-[0_0_50px_rgba(255,255,255,0.02)]">
+                            <div className="w-24 h-24 rounded-full border border-white/20 flex items-center justify-center mb-6 relative overflow-hidden bg-white/5">
+                                <div className="absolute inset-x-0 top-1/2 h-px bg-white/20" />
+                                <div className="absolute inset-y-0 left-1/2 w-px bg-white/20" />
+                                <div
+                                    className="w-[150%] h-[150%] absolute origin-center animate-radar-spin"
+                                    style={{ background: 'conic-gradient(from 0deg, transparent 0deg, transparent 270deg, rgba(255, 255, 255, 0.15) 360deg)' }}
+                                />
+                                <LayoutGrid className="w-8 h-8 text-gray-400 relative z-10 animate-pulse-slow" />
+                            </div>
+
+                            <h2 className="font-heading text-xl text-gray-300 tracking-[0.2em] uppercase mb-4 animate-glitch-hover cursor-crosshair select-none">
+                                Task Queue Empty
+                            </h2>
+                            <p className="font-mono text-[11px] text-gray-500 max-w-sm text-center tracking-widest leading-relaxed uppercase">
+                                No operational directives detected. Awaiting upstream dispatch from OpenClaw Nexus.
+                            </p>
+
+                            <div className="mt-8 flex items-center text-[10px] font-mono text-gray-400 border border-white/10 px-4 py-2 bg-white/5 rounded">
+                                <div className="w-1.5 h-1.5 bg-gray-400 rounded-full mr-3 animate-pulse-fast"></div>
+                                SYNC IDLE
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {viewMode === 'kanban' ? (
                     <DndContext
                         sensors={sensors}

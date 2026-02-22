@@ -2,13 +2,8 @@ import { v4 as uuidv4 } from 'uuid';
 
 export class OpenClawClient {
     constructor(config = {}) {
-        // URL Builder (wss if https, ws otherwise)
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const host = config.host || window.location.hostname;
-        const port = config.port || 43533;
-        const defaultUrl = `${protocol}//${host}:${port}`;
-
-        this.url = import.meta.env.VITE_OPENCLAW_WS_URL || defaultUrl;
+        // By default, connect to the local Node.js BFF Server which handles the OpenClaw Ed25519 Handshake
+        this.url = import.meta.env.VITE_OPENCLAW_WS_URL || "ws://localhost:4000";
         this.token = config.token || import.meta.env.VITE_OPENCLAW_GATEWAY_TOKEN || '';
 
         this.ws = null;
@@ -64,13 +59,6 @@ export class OpenClawClient {
             console.log('[OpenClaw] RAW WS frame:', event.data);
             const frame = JSON.parse(event.data);
 
-            // 1. Handshake Phase
-            if (!this.hasHandshakeCompleted && frame.type === 'event' && frame.event === 'connect.challenge') {
-                this._replyToChallenge(frame.payload);
-                return;
-            }
-
-            // Extract payload to detect hello-ok inside a 'res' frame
             const isHelloOkEvent = frame.type === 'hello-ok';
             const isHelloOkRes = frame.type === 'res' && frame.payload && frame.payload.type === 'hello-ok';
 
@@ -107,32 +95,7 @@ export class OpenClawClient {
         }
     }
 
-    _replyToChallenge(challengePayload) {
-        // Create strictly structured ConnectParams Schema Payload
-        const connectParams = {
-            minProtocol: 1,
-            maxProtocol: 3,
-            client: {
-                id: "cli",
-                version: "1.0.0",
-                platform: "web",
-                mode: "cli"
-            },
-            auth: {
-                token: this.token
-            }
-        };
-
-        // Challenge Response RequestFrame
-        const reqFrame = {
-            type: "req",
-            id: uuidv4(),
-            method: "connect",
-            params: connectParams
-        };
-
-        this._sendFrame(reqFrame);
-    }
+    // (Authentication is now handled securely by the BFF server)
 
     _handleClose(event) {
         this.hasHandshakeCompleted = false;

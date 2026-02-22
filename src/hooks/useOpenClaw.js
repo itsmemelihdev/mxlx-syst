@@ -135,23 +135,11 @@ export const useOpenClaw = () => {
 export const useTasksApi = (pollingIntervalMs = 5000) => {
     // Offline Mock Fallback for Tasks Kanban
     const MOCK_TASKS = {
-        INBOX: [
-            { id: 'T-101', title: 'Analyze recent server logs for anomalies', assignee: 'ATLAS', priority: 'nominal' },
-            { id: 'T-102', title: 'Draft weekly performance report', assignee: 'HERALD', priority: 'nominal' }
-        ],
-        ASSIGNED: [
-            { id: 'T-201', title: 'Audit crypto transactions Q3', assignee: 'LEDGER', priority: 'critical' }
-        ],
-        IN_PROGRESS: [
-            { id: 'T-301', title: 'Compile new inference engine v2', assignee: 'FORGE', priority: 'critical' },
-            { id: 'T-302', title: 'Monitor deep space arrays', assignee: 'ATLAS', priority: 'caution' }
-        ],
-        REVIEW: [
-            { id: 'T-401', title: 'Review operator daily summary', assignee: 'ORACLE', priority: 'nominal' }
-        ],
-        DONE: [
-            { id: 'T-501', title: 'Initialize command center UI', assignee: 'ALPHA', priority: 'nominal' }
-        ]
+        INBOX: [],
+        ASSIGNED: [],
+        IN_PROGRESS: [],
+        REVIEW: [],
+        DONE: []
     };
 
     const [tasks, setTasks] = useState(MOCK_TASKS);
