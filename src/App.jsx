@@ -9,6 +9,7 @@ import { AgentsPanel } from './components/AgentsPanel';
 import { TasksPanel } from './components/TasksPanel';
 import { IntelPanel } from './components/IntelPanel';
 import { useOpenClaw, useTasksApi } from './hooks/useOpenClaw';
+import { WifiOff } from 'lucide-react';
 
 function App() {
   const [activeTab, setActiveTab] = useState('overview');
@@ -71,7 +72,7 @@ function App() {
             />
           )}
 
-          {activeTab === 'tasks' && <TasksPanel tasks={simulation.tasks} agents={simulation.agentStatus} />}
+          {activeTab === 'tasks' && <TasksPanel tasks={simulation.tasks} agents={simulation.agentStatus} ws={openClawState.client?.ws} />}
           {activeTab === 'intel' && <IntelPanel intelFeed={simulation.intelFeed} heatmap={simulation.heatmap} agents={simulation.agentStatus} />}
         </main>
 
@@ -81,6 +82,50 @@ function App() {
       </div>
 
       <Statusbar metrics={simulation.systemMetrics} />
+
+      {/* CONNECTION LOST OVERLAY */}
+      {openClawState.connectionStatus === 'RECONNECTING' && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center"
+          style={{ background: 'rgba(5,5,8,0.92)', backdropFilter: 'blur(8px)' }}>
+
+          <div className="flex flex-col items-center gap-6 text-center">
+
+            <div className="w-16 h-16 rounded-full border-2 border-critical flex items-center justify-center animate-strobe">
+              <WifiOff className="w-8 h-8 text-critical" />
+            </div>
+
+            <div>
+              <p className="font-heading text-2xl uppercase tracking-widest text-critical">
+                CONNECTION LOST
+              </p>
+              <p className="font-mono text-sm text-[#6B7280] mt-1">
+                BFF Gateway unreachable — ws://localhost:4000
+              </p>
+            </div>
+
+            <p className="font-mono text-xs text-[#6B7280]">
+              RECONNECT ATTEMPT <span className="text-caution">{openClawState.client?.reconnectAttempts || 1}</span> — RETRY IN PROGRESS
+            </p>
+
+            <div className="w-64 h-[2px] bg-[rgba(255,255,255,0.06)] rounded-full overflow-hidden">
+              <div className="h-full bg-critical animate-[retryProgress_5s_linear_infinite]" />
+            </div>
+
+            <button
+              onClick={() => {
+                if (openClawState.client) {
+                  if (openClawState.client.reconnectTimer) clearTimeout(openClawState.client.reconnectTimer);
+                  openClawState.client.connect();
+                }
+              }}
+              className="font-mono text-xs uppercase tracking-widest px-4 py-2 border border-[rgba(255,255,255,0.06)] text-[#E8E4DD] hover:border-[rgba(245,158,11,0.3)] hover:text-caution transition-all duration-200 cursor-crosshair"
+            >
+              [ FORCE RECONNECT ]
+            </button>
+
+          </div>
+        </div>
+      )}
     </div>
   );
 }

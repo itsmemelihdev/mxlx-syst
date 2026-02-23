@@ -1,5 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useOpenClaw } from '../hooks/useOpenClaw';
+
+const STORAGE_KEY = (agentId) => `mxlx_comms_${agentId}`;
+const MAX_PERSISTED_MESSAGES = 200;
 
 const WELCOME_MESSAGES = {
     ALPHA: "NEXUS LINK ESTABLISHED. Chief of Staff ALPHA online. Awaiting directives.",
@@ -12,7 +15,46 @@ const WELCOME_MESSAGES = {
 
 export const CommsConsole = ({ agents, activeAgentId, setActiveAgentId }) => {
     // Instead of array, Map of agentId -> array of messages
-    const [chatHistories, setChatHistories] = useState(new Map());
+    const [chatHistories, setChatHistories] = useState(() => {
+        const restored = new Map();
+        // Liste des agents connus — même liste que dans useSimulation / agents prop
+        const knownAgents = ['ALPHA', 'ATLAS', 'HERALD', 'LEDGER', 'FORGE', 'ORACLE'];
+        knownAgents.forEach(id => {
+            try {
+                const saved = localStorage.getItem(STORAGE_KEY(id));
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                        restored.set(id, parsed);
+                    }
+                }
+            } catch (e) {
+                // localStorage corrompu — ignorer silencieusement
+                localStorage.removeItem(STORAGE_KEY(id));
+            }
+        });
+        return restored;
+    });
+
+    const updateHistory = useCallback((agentId, newMessages) => {
+        setChatHistories(prev => {
+            const next = new Map(prev);
+            const capped = newMessages.slice(-MAX_PERSISTED_MESSAGES);
+            next.set(agentId, capped);
+            // Persist en localStorage de manière asynchrone (pas dans le render)
+            try {
+                localStorage.setItem(STORAGE_KEY(agentId), JSON.stringify(capped));
+            } catch (e) {
+                // localStorage plein (quota exceeded) — purger le plus ancien agent
+                const oldestKey = [...next.keys()][0];
+                if (oldestKey && oldestKey !== agentId) {
+                    localStorage.removeItem(STORAGE_KEY(oldestKey));
+                    localStorage.setItem(STORAGE_KEY(agentId), JSON.stringify(capped));
+                }
+            }
+            return next;
+        });
+    }, []);
     const [inputVal, setInputVal] = useState('');
     // Lock to prevent sending while streaming
     const [isStreaming, setIsStreaming] = useState(false);
@@ -85,13 +127,10 @@ export const CommsConsole = ({ agents, activeAgentId, setActiveAgentId }) => {
                 content: WELCOME_MESSAGES[activeAgentId] || "SECURE CHANNEL ESTABLISHED. Awaiting operator input.",
                 agent: agents.find(a => a.id === activeAgentId)
             };
-            setChatHistories(prev => {
-                const newMap = new Map(prev);
-                if (!newMap.has(activeAgentId)) {
-                    newMap.set(activeAgentId, [welcomeMsg]);
-                }
-                return newMap;
-            });
+            const newMap = new Map(chatHistories);
+            if (!newMap.has(activeAgentId)) {
+                updateHistory(activeAgentId, [welcomeMsg]);
+            }
         }
     }, [activeAgentId, chatHistories, agents]);
 
@@ -149,6 +188,9 @@ export const CommsConsole = ({ agents, activeAgentId, setActiveAgentId }) => {
                         });
                     }
                     if (sessionKey === activeAgentId) setIsStreaming(false);
+
+                    // Persist to local storage ONLY on final message
+                    updateHistory(sessionKey, msgs);
                 }
                 else if (state === 'aborted' || state === 'error') {
                     msgs.push({
@@ -158,10 +200,14 @@ export const CommsConsole = ({ agents, activeAgentId, setActiveAgentId }) => {
                         isError: true
                     });
                     if (sessionKey === activeAgentId) setIsStreaming(false);
+
+                    // Persist to local storage on error/aborted
+                    updateHistory(sessionKey, msgs);
                 }
 
-                mapCopy.set(sessionKey, [...msgs]);
-                return mapCopy;
+                // Important: for delta chunks, we just return the in-memory mutated array to keep the react state fast
+                // without triggering localstorage IO. The localStorage IO will be triggered when state === 'final'.
+                return new Map(prev).set(sessionKey, msgs);
             });
         });
 
@@ -173,11 +219,8 @@ export const CommsConsole = ({ agents, activeAgentId, setActiveAgentId }) => {
         if (!inputVal.trim() || !activeAgentId || isStreaming) return;
 
         const operatorMsg = { role: 'OPERATOR', content: inputVal };
-
-        setChatHistories(prev => {
-            const msgs = prev.get(activeAgentId) || [];
-            return new Map(prev).set(activeAgentId, [...msgs, operatorMsg]);
-        });
+        const msgs = chatHistories.get(activeAgentId) || [];
+        updateHistory(activeAgentId, [...msgs, operatorMsg]);
 
         // Exact OpenClaw `chat.send` WS integration
         try {
@@ -199,15 +242,33 @@ export const CommsConsole = ({ agents, activeAgentId, setActiveAgentId }) => {
             <div className="flex-1 flex flex-col tactical-panel">
                 <div className="flex justify-between items-center mb-4 border-b border-white/10 pb-4 shrink-0">
                     <h2 className="text-heading text-lg">Uplink Console</h2>
-                    <div className="flex space-x-1">
-                        <span className="px-2 py-0.5 rounded flex items-center bg-accent/20 border border-accent/40 font-mono text-[10px] text-accent font-bold">
-                            <div className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse mr-2"></div>
-                            {activeAgent?.name || 'GLOBAL'}
-                        </span>
+                    <div className="flex items-center space-x-3">
+                        <button
+                            onClick={() => {
+                                updateHistory(activeAgentId, []);
+                                localStorage.removeItem(STORAGE_KEY(activeAgentId));
+                            }}
+                            className="font-mono text-[10px] uppercase tracking-widest text-[#6B7280] hover:text-critical transition-colors cursor-crosshair"
+                            title="Clear conversation history"
+                        >
+                            [ PURGE LOG ]
+                        </button>
+                        <div className="flex space-x-1">
+                            <span className="px-2 py-0.5 rounded flex items-center bg-accent/20 border border-accent/40 font-mono text-[10px] text-accent font-bold">
+                                <div className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse mr-2"></div>
+                                {activeAgent?.name || 'GLOBAL'}
+                            </span>
+                        </div>
                     </div>
                 </div>
 
                 <div className="flex-1 overflow-y-auto mb-4 space-y-4 pr-2 font-mono text-[13px] leading-relaxed">
+                    {/* En haut de la liste des messages, si l'historique vient du storage */}
+                    {chatHistories.get(activeAgentId)?.length > 0 && (
+                        <div className="font-mono text-[10px] text-[#6B7280] border-b border-[rgba(255,255,255,0.04)] pb-2 mb-2 text-center">
+                            ── LOG RESTORED FROM CACHE · {chatHistories.get(activeAgentId).length} ENTRIES ──
+                        </div>
+                    )}
                     {currentMessages.map((msg, idx) => (
                         <div key={idx} className={`flex flex-col animate-data-enter ${msg.role === 'OPERATOR' ? 'items-end' : 'items-start'}`}>
                             <div className={`text-[10px] mb-1 font-bold tracking-widest ${msg.role === 'OPERATOR' ? 'text-gray-500' : msg.isError ? 'text-critical' : 'text-accent'}`}>

@@ -52,16 +52,18 @@ export const Topbar = ({ missionTime, globalHealth, connectionStatus }) => {
                 </div>
 
                 <div className={`flex items-center space-x-2 border px-3 py-1 rounded transition-colors ${connectionStatus === 'CONNECTED' ? 'bg-nominal/10 border-nominal/30' :
-                        connectionStatus === 'RECONNECTING' ? 'bg-caution/10 border-caution/30' :
-                            'bg-critical/10 border-critical/30'
+                    connectionStatus === 'CONNECTING' ? 'bg-caution/10 border-caution/30' :
+                        connectionStatus === 'RECONNECTING' ? 'bg-critical/10 border-critical/30' :
+                            'bg-[#6B7280]/10 border-[#6B7280]/30'
                     }`}>
-                    <div className={`w-1.5 h-1.5 rounded-full ${connectionStatus === 'CONNECTED' ? 'bg-nominal animate-pulse' :
-                            connectionStatus === 'RECONNECTING' ? 'bg-caution animate-ping' :
-                                'bg-critical'
+                    <div className={`w-1.5 h-1.5 rounded-full ${connectionStatus === 'CONNECTED' ? 'bg-nominal animate-pulse-slow' :
+                        connectionStatus === 'CONNECTING' ? 'bg-caution animate-pulse-fast' :
+                            connectionStatus === 'RECONNECTING' ? 'bg-critical animate-strobe' :
+                                'bg-[#6B7280]'
                         }`}></div>
                     <span className={`font-heading text-[10px] tracking-widest uppercase mt-[1px] ${connectionStatus === 'CONNECTED' ? 'text-nominal' :
-                            connectionStatus === 'RECONNECTING' ? 'text-caution' :
-                                'text-critical'
+                        connectionStatus === 'RECONNECTING' ? 'text-caution' :
+                            'text-critical'
                         }`}>
                         {connectionStatus === 'CONNECTED' ? 'UPLINK ESTABLISHED' :
                             connectionStatus === 'RECONNECTING' ? 'REESTABLISHING...' :

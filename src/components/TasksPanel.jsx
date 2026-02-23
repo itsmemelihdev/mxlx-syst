@@ -76,7 +76,7 @@ const SortableTaskWrapper = ({ task, agentMap }) => {
 // --- Column Droppable Area ---
 import { useDroppable } from '@dnd-kit/core';
 
-const KanbanColumn = ({ id, title, tasks, agentMap }) => {
+const KanbanColumn = ({ id, title, tasks, agentMap, flashColumn }) => {
     const { setNodeRef, isOver } = useDroppable({ id });
 
     const getBadgeColor = () => {
@@ -87,10 +87,10 @@ const KanbanColumn = ({ id, title, tasks, agentMap }) => {
     };
 
     return (
-        <div className="flex-1 flex flex-col bg-black/40 rounded-lg border border-white/5 overflow-hidden">
-            <div className="px-4 py-3 bg-white/5 border-b border-white/5 flex justify-between items-center shrink-0">
-                <h3 className="font-heading text-xs uppercase tracking-widest text-[#E8E4DD]">{title}</h3>
-                <span className={`text-[10px] font-mono px-2 py-0.5 rounded ${getBadgeColor()}`}>{tasks.length}</span>
+        <div className={`flex-1 flex flex-col bg-black/40 rounded-lg border overflow-hidden transition-colors duration-200 ${flashColumn === id ? 'border-nominal bg-nominal/5' : 'border-white/5'}`}>
+            <div className={`px-4 py-3 border-b flex justify-between items-center shrink-0 transition-colors duration-200 ${flashColumn === id ? 'bg-nominal/20 border-nominal/50' : 'bg-white/5 border-white/5'}`}>
+                <h3 className={`font-heading text-xs uppercase tracking-widest ${flashColumn === id ? 'text-nominal' : 'text-[#E8E4DD]'}`}>{title}</h3>
+                <span className={`text-[10px] font-mono px-2 py-0.5 rounded ${flashColumn === id ? 'bg-nominal/40 text-black font-bold' : getBadgeColor()}`}>{tasks.length}</span>
             </div>
             <div
                 ref={setNodeRef}
@@ -107,11 +107,22 @@ const KanbanColumn = ({ id, title, tasks, agentMap }) => {
     );
 };
 
+// Conversion colonnes UI → status backend OpenClaw
+const COLUMN_TO_STATUS = {
+    INBOX: 'inbox',
+    ASSIGNED: 'assigned',
+    IN_PROGRESS: 'in_progress',
+    REVIEW: 'review',
+    DONE: 'done',
+};
+
 // --- Main Panel ---
-export const TasksPanel = ({ tasks, agents }) => {
+export const TasksPanel = ({ tasks, agents, ws }) => {
     const [viewMode, setViewMode] = useState('kanban'); // 'kanban' | 'timeline'
     const [localTasks, setLocalTasks] = useState(tasks);
     const [activeDragTask, setActiveDragTask] = useState(null);
+    const [flashColumn, setFlashColumn] = useState(null);
+    const [showWsToast, setShowWsToast] = useState(false);
 
     // Sync initial strictly once or lightly to keep data flowing but allow drags
     useEffect(() => {
@@ -205,23 +216,24 @@ export const TasksPanel = ({ tasks, agents }) => {
                 ...prev,
                 [overContainer]: arrayMove(prev[overContainer], activeIndex, overIndex)
             }));
+        }
 
-            // 3. Dispatch PATCH to backend (per avantlancement.md)
-            try {
-                const apiBase = import.meta.env.VITE_MISSIONCONTROL_API_BASE || 'http://localhost:4000/api';
-                const res = await fetch(`${apiBase}/tasks/${active.id}`, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ column: overContainer, order: overIndex })
-                });
+        // ↓ AJOUTER après la mise à jour de localTasks
+        if (over && active.data.current?.sortable?.containerId !== over.data.current?.sortable?.containerId) {
+            const taskId = active.id;
+            const newColumn = over.data.current?.sortable?.containerId || over.id;
 
-                if (!res.ok) {
-                    throw new Error(`Failed to save drag end: ${res.statusText}`);
-                }
-            } catch (err) {
-                console.error("[TasksPanel] Kanban Drag sync failed, rolling back.", err);
-                // Rollback optimistic update
-                setLocalTasks(previousTasks);
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    type: 'UPDATE_TASK_STATUS',
+                    taskId: taskId,
+                    newStatus: COLUMN_TO_STATUS[newColumn] || newColumn.toLowerCase(),
+                }));
+                setFlashColumn(newColumn);
+                setTimeout(() => setFlashColumn(null), 800);
+            } else {
+                setShowWsToast(true);
+                setTimeout(() => setShowWsToast(false), 3000);
             }
         }
     };
@@ -247,6 +259,11 @@ export const TasksPanel = ({ tasks, agents }) => {
 
     return (
         <div className="w-full h-full bg-void p-6 flex flex-col overflow-hidden relative font-sans">
+            {showWsToast && (
+                <div className="absolute bottom-6 right-6 z-50 bg-[#12121C] border border-critical text-critical font-mono text-xs px-4 py-2 shadow-lg tracking-widest">
+                    [ WS OFFLINE — STATUS NOT SYNCED ]
+                </div>
+            )}
 
             {/* Header */}
             <div className="flex justify-between items-center mb-6 shrink-0">

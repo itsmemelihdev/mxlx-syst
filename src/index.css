@@ -388,4 +388,14 @@
   .animate-breathe-glow {
     animation: breatheGlow 4s ease-in-out infinite;
   }
+
+  @keyframes retryProgress {
+    from {
+      width: 0%;
+    }
+
+    to {
+      width: 100%;
+    }
+  }
 }
