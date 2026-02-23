@@ -102,8 +102,8 @@ function getOrGenerateKeypair() {
 // ----------------------
 // Main connect
 // ----------------------
-const GATEWAY_URL = "wss://mxlihiaopenclaw1846.up.railway.app";
-const GATEWAY_TOKEN = "f4fad79632a5a6fc1c1353089c30ce26c1274b958c109daab360fcd7abe1216e";
+const GATEWAY_URL = process.env.VITE_OPENCLAW_REMOTE_WS_URL || "wss://mxlihiaopenclaw1846.up.railway.app";
+const GATEWAY_TOKEN = process.env.VITE_OPENCLAW_GATEWAY_TOKEN || "f4fad79632a5a6fc1c1353089c30ce26c1274b958c109daab360fcd7abe1216e";
 if (!GATEWAY_TOKEN) throw new Error("Missing VITE_OPENCLAW_GATEWAY_TOKEN env var");
 
 const CLIENT_ID = "cli";
